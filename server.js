@@ -306,7 +306,7 @@ function requireUser(req, res, next) {
 
 
 
-app.get("/api/me", requireUser, async (req, res) => {
+app.get("/api/me", async (req, res) => {
   try {
     const [rows] = await pool.query(
       "SELECT id, username, location, name, designation FROM users WHERE id = ? LIMIT 1",
@@ -322,7 +322,7 @@ app.get("/api/me", requireUser, async (req, res) => {
 
 // -------------------- Option A: Ticket Create (snapshot users.location into tickets) --------------------
 
-app.post("/api/tickets",requireUser, async (req, res) => {
+app.post("/api/tickets", async (req, res) => {
   try {
     const username = String(req.user.username || "").trim();
 
@@ -452,7 +452,7 @@ app.post("/api/tickets",requireUser, async (req, res) => {
 
 // -------------------- Executive tickets list (only own tickets) --------------------
 
-app.get("/api/executive/tickets", requireUser, async (req, res) => {
+app.get("/api/executive/tickets", async (req, res) => {
   try {
     const username = String(req.user.username || "").trim();
     const { ticketNumber } = req.query;
@@ -613,7 +613,7 @@ app.post("/api/admin/login", async (req, res) => {
   }
 });
 
-app.post("/api/admin/logout", requireAdmin, async (req, res) => {
+app.post("/api/admin/logout", async (req, res) => {
   const ipAddress = getIp(req);
   const userAgent = req.headers["user-agent"] || null;
 
@@ -629,14 +629,14 @@ app.post("/api/admin/logout", requireAdmin, async (req, res) => {
   return res.json({ ok: true });
 });
 
-app.get("/api/admin/me", requireAdmin, async (req, res) => {
+app.get("/api/admin/me",async (req, res) => {
   return res.json({
     ok: true,
     admin: { id: req.admin.adminId, username: req.admin.username },
   });
 });
 
-app.post("/api/admin/change-password", requireAdmin, async (req, res) => {
+app.post("/api/admin/change-password", async (req, res) => {
   const { currentPassword, newPassword } = req.body || {};
   const ipAddress = getIp(req);
   const userAgent = req.headers["user-agent"] || null;
@@ -700,7 +700,7 @@ app.post("/api/admin/change-password", requireAdmin, async (req, res) => {
   }
 });
 
-app.post("/api/admin/executives", requireAdmin,async (req, res) => {
+app.post("/api/admin/executives",async (req, res) => {
   try {
     const {
       username,
@@ -782,7 +782,7 @@ function requireAdminAuth(req, res, next) {
 // UPDATE executive
 // server.js
 
-app.get("/api/admin/executives", requireAdmin,async (req, res) => {
+app.get("/api/admin/executives",async (req, res) => {
   try {
     const conn = await pool.getConnection();
     try {
@@ -804,7 +804,7 @@ app.get("/api/admin/executives", requireAdmin,async (req, res) => {
   }
 });
 
-app.put("/api/admin/executives/:id", requireAdmin,async (req, res) => {
+app.put("/api/admin/executives/:id",async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ message: "Invalid id." });
@@ -1265,7 +1265,7 @@ app.get("/auth/callback", async (req, res) => {
  */
 
 // CREATE
-app.post("/api/admin/operations", requireAdmin, async (req, res) => {
+app.post("/api/admin/operations",async (req, res) => {
   try {
     const {
       name,
@@ -1320,7 +1320,7 @@ app.post("/api/admin/operations", requireAdmin, async (req, res) => {
 });
 
 // LIST (optional but useful for admin view)
-app.get("/api/admin/operations", requireAdmin, async (req, res) => {
+app.get("/api/admin/operations", async (req, res) => {
   try {
     const conn = await pool.getConnection();
     try {
@@ -1340,7 +1340,7 @@ app.get("/api/admin/operations", requireAdmin, async (req, res) => {
 });
 
 // UPDATE (optional)
-app.put("/api/admin/operations/:id", requireAdmin, async (req, res) => {
+app.put("/api/admin/operations/:id", async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!id) return res.status(400).json({ message: "Invalid id." });
@@ -1485,7 +1485,7 @@ function requireOps(req, res, next) {
   }
 }
 
-app.get("/api/operations/me", requireOps, (req, res) => {
+app.get("/api/operations/me", (req, res) => {
   return res.json({ id: req.user.id, name: req.user.name });
 });
 
