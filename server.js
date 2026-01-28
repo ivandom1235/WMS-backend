@@ -1,15 +1,19 @@
 // backend/service.js
-require("dotenv").config();
-const express = require("express");
-const cors = require("cors");
-const bcrypt = require("bcryptjs");
-const mysql = require("mysql2/promise");
-const cookieParser = require("cookie-parser");
-const jwt = require("jsonwebtoken");
-// backend/service.js (add near other imports)
-const { getAuthUrl, handleAuthCallback } = require("./utils/graphAuth");
-const { sendTicketCompletedEmail } = require("./utils/mailer");
-const { sendTicketRegisteredEmail } = require("./utils/mailer");
+import "dotenv/config";
+
+import express from "express";
+import cors from "cors";
+import bcrypt from "bcryptjs";
+import mysql from "mysql2/promise";
+import cookieParser from "cookie-parser";
+import jwt from "jsonwebtoken";
+
+import { getAuthUrl, handleAuthCallback } from "./utils/graphAuth.js";
+import {
+  sendTicketCompletedEmail,
+  sendTicketRegisteredEmail,
+} from "./utils/mailer.js";
+
 
 const app = express();
 
@@ -30,14 +34,17 @@ app.use(express.json());
 app.use(cookieParser());
 app.set("trust proxy", 1);
 
+
 let pool;
 
 async function init() {
   pool = mysql.createPool({
     host: process.env.DB_HOST,
+    port: Number(process.env.DB_PORT),       // ✅ ADD THIS
     user: process.env.DB_USER,
-    password: process.env.DB_PASS,
+    password: process.env.DB_PASS,       // ✅ FIX NAME
     database: process.env.DB_NAME,
+    ssl: { rejectUnauthorized: false },       // ✅ REQUIRED FOR AIVEN
     waitForConnections: true,
     connectionLimit: 10,
   });
@@ -50,6 +57,19 @@ async function init() {
     console.log(`API running on http://localhost:${PORT}`);
   });
 }
+
+export { pool, init };
+
+
+
+app.get("/health/db", async (req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 init().catch((err) => {
   console.error("Failed to start server:", err.message);
@@ -870,7 +890,8 @@ app.put("/api/admin/executives/:id", requireAdmin,async (req, res) => {
 // server.js (ADD THIS) — Report APIs (view + export Excel)
 // npm i exceljs
 
-const ExcelJS = require("exceljs");
+import ExcelJS from "exceljs";
+
 
 // Helper: build WHERE clauses safely
 function buildReportWhere(q, paramsOut) {

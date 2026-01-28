@@ -1,6 +1,7 @@
 // backend/utils/mailer.js
 
-const { getAccessTokenSilent } = require("./graphAuth");
+import { getAccessTokenSilent } from "./graphAuth.js";
+
 
 async function sendTicketRegisteredEmail({ to, customerName, ticketNumber }) {
   const customerEmail = String(to || "").trim();
@@ -153,7 +154,7 @@ ${OPERATIONS_PHONE}`.trim();
   return { ok: true, status: res.status };
 }
 
-module.exports = {
+export {
   sendTicketRegisteredEmail,
   sendTicketCompletedEmail,
 };

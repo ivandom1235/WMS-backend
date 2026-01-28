@@ -1,9 +1,15 @@
 // backend/utils/graphAuth.js
 
-const fs = require("fs");
-const path = require("path");
-const crypto = require("crypto");
-const { ConfidentialClientApplication } = require("@azure/msal-node");
+import fs from "fs";
+import path from "path";
+import crypto from "crypto";
+import { ConfidentialClientApplication } from "@azure/msal-node";
+
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 
 const TENANT_ID = String(process.env.MS_TENANT_ID || "").trim();
 const CLIENT_ID = String(process.env.MS_CLIENT_ID || "").trim();
@@ -200,7 +206,7 @@ async function getAccessTokenSilent() {
   }
 }
 
-module.exports = {
+export {
   getAuthUrl,
   handleAuthCallback,
   getAccessTokenSilent,
