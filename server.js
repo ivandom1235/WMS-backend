@@ -20,15 +20,32 @@ const app = express();
 /**
  * CORS (single, correct)
  */
+// CORS (replace your existing app.use(cors(...)) with this)
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://wmservices-frontend.vercel.app",
+  "https://wmservices-frontend-git-main-ivan-dominics-projects.vercel.app",
+];
+
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:3000"],
+    origin: (origin, cb) => {
+      // allow Postman/curl (no Origin header)
+      if (!origin) return cb(null, true);
+
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      return cb(new Error(`CORS blocked for origin: ${origin}`));
+    },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    exposedHeaders: ["set-cookie"],
     credentials: true,
   })
 );
+
+// Ensure preflight requests succeed
+app.options("*", cors());
+
 
 app.use(express.json());
 app.use(cookieParser());
