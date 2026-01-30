@@ -1611,3 +1611,158 @@ app.patch("/api/tickets/:ticketNumber/status", async (req, res) => {
     return res.status(500).json({ message: "Failed to update status." });
   }
 });
+
+////adding Download report for executives
+// GET: My tickets (view)
+// GET: My tickets (view)
+app.get("/api/reports/my-tickets", requireUser, async (req, res) => {
+  try {
+    const username = String(req.user?.username || "").trim();
+    if (!username) return res.status(401).json({ message: "Unauthorized" });
+
+    const limit = Math.min(Number(req.query.limit || 200), 2000);
+    const { status = "", created_from = "", created_to = "" } = req.query;
+
+    let sql = `
+      SELECT
+        id,
+        ticket_number,
+        company_name,
+        location,
+        customer_name,
+        customer_contact_number,
+        customer_email_id,
+        category,
+        request_type,
+        particulars,
+        description,
+        mode_of_payment,
+        service_charges,
+        cost,
+        status,
+        due_date,
+        created_at,
+        username
+      FROM tickets
+      WHERE username = ?
+    `;
+
+    const params = [username];
+
+    if (String(status).trim()) {
+      sql += ` AND status = ?`;
+      params.push(String(status).trim());
+    }
+
+    if (String(created_from).trim()) {
+      sql += ` AND DATE(created_at) >= ?`;
+      params.push(String(created_from).trim());
+    }
+
+    if (String(created_to).trim()) {
+      sql += ` AND DATE(created_at) <= ?`;
+      params.push(String(created_to).trim());
+    }
+
+    sql += ` ORDER BY created_at DESC LIMIT ?`;
+    params.push(limit);
+
+    const [rows] = await pool.query(sql, params);
+    return res.json({ rows });
+  } catch (e) {
+    return res.status(500).json({ message: e?.message || "Server error" });
+  }
+});
+
+// GET: My tickets (Excel export)
+app.get("/api/reports/my-tickets/export", requireUser, async (req, res) => {
+  try {
+    const username = String(req.user?.username || "").trim();
+    if (!username) return res.status(401).json({ message: "Unauthorized" });
+
+    const { status = "", created_from = "", created_to = "" } = req.query;
+
+    let sql = `
+      SELECT
+        ticket_number,
+        company_name,
+        location,
+        customer_name,
+        customer_contact_number,
+        customer_email_id,
+        category,
+        request_type,
+        particulars,
+        description,
+        mode_of_payment,
+        service_charges,
+        cost,
+        status,
+        due_date,
+        created_at,
+        username
+      FROM tickets
+      WHERE username = ?
+    `;
+
+    const params = [username];
+
+    if (String(status).trim()) {
+      sql += ` AND status = ?`;
+      params.push(String(status).trim());
+    }
+    if (String(created_from).trim()) {
+      sql += ` AND DATE(created_at) >= ?`;
+      params.push(String(created_from).trim());
+    }
+    if (String(created_to).trim()) {
+      sql += ` AND DATE(created_at) <= ?`;
+      params.push(String(created_to).trim());
+    }
+
+    sql += ` ORDER BY created_at DESC`;
+
+    const [rows] = await pool.query(sql, params);
+
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("My Tickets");
+
+    ws.columns = [
+      { header: "Ticket #", key: "ticket_number", width: 18 },
+      { header: "Company", key: "company_name", width: 22 },
+      { header: "Location", key: "location", width: 18 },
+      { header: "Customer", key: "customer_name", width: 22 },
+      { header: "Customer Phone", key: "customer_contact_number", width: 16 },
+      { header: "Customer Email", key: "customer_email_id", width: 26 },
+      { header: "Category", key: "category", width: 22 },
+      { header: "Request Type", key: "request_type", width: 22 },
+      { header: "Particulars", key: "particulars", width: 26 },
+      { header: "Description", key: "description", width: 30 },
+      { header: "Payment Mode", key: "mode_of_payment", width: 18 },
+      { header: "Service Charges", key: "service_charges", width: 16 },
+      { header: "Cost", key: "cost", width: 12 },
+      { header: "Status", key: "status", width: 14 },
+      { header: "Due Date", key: "due_date", width: 18 },
+      { header: "Created At", key: "created_at", width: 20 },
+      { header: "Username", key: "username", width: 16 },
+    ];
+
+    ws.addRows(rows);
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="my_tickets_${new Date().toISOString().slice(0, 10)}.xlsx"`
+    );
+
+    await wb.xlsx.write(res);
+    res.end();
+  } catch (e) {
+    return res.status(500).json({ message: e?.message || "Server error" });
+  }
+});
+
