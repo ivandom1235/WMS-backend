@@ -2,8 +2,13 @@
 
 import { getAccessTokenSilent } from "./graphAuth.js";
 
-
-async function sendTicketRegisteredEmail({ to, customerName, ticketNumber }) {
+async function sendTicketRegisteredEmail({
+  to,
+  customerName,
+  ticketNumber,
+  category,
+  requestType,
+}) {
   const customerEmail = String(to || "").trim();
   const internalEmail = "info@wmservices.in";
 
@@ -20,8 +25,12 @@ async function sendTicketRegisteredEmail({ to, customerName, ticketNumber }) {
 
 We are pleased to inform you that your request has been successfully received and accepted.
 
-Current Status: Registered
+Service Request Details:
 Service Request Number: ${ticketNumber}
+Category: ${category || "-"}
+Request Type: ${requestType || "-"}
+
+Current Status: Registered
 
 Please retain the above service request number for future reference and status tracking. You may use this number when contacting our support team or while checking updates on the service portal.
 
@@ -65,11 +74,6 @@ ${OPERATIONS_PHONE}`.trim();
     throw new Error(json?.error?.message || text || `sendMail failed: ${res.status}`);
   }
 
-  console.log("✅ EMAIL SENT TO MULTIPLE RECIPIENTS:", {
-    to: [customerEmail, internalEmail],
-    ticketNumber,
-  });
-
   return { ok: true, status: res.status };
 }
 
@@ -77,6 +81,8 @@ async function sendTicketCompletedEmail({
   to,
   customerName,
   ticketNumber,
+  category,
+  requestType,
   opRemark,
 }) {
   const customerEmail = String(to || "").trim();
@@ -91,21 +97,22 @@ async function sendTicketCompletedEmail({
 
   const subject = "Service Request Completed – Status: Completed";
 
-  const bodyText = `
-Dear ${customerName},
+  const bodyText = `Dear ${customerName},
 
 Thank you for choosing WM Services.
 
 We are pleased to inform you that your service request has been completed successfully.
 
-Current Status: Completed
+Service Request Details:
 Service Request Number: ${ticketNumber}
+Category: ${category || "-"}
+Request Type: ${requestType || "-"}
 
-${opRemark ? `Operations Remark: ${opRemark}` : ""}
-
+Current Status: Completed
+${opRemark ? `\nOperations Remark: ${opRemark}\n` : ""}
 
 We value your feedback and would appreciate if you could take a few moments to share your experience with us by clicking the link below:
- https://g.co/kgs/xk6heUg
+https://g.co/kgs/xk6heUg
 
 If you have any questions or need further assistance, please reply to this email or contact our support team.
 
@@ -114,7 +121,6 @@ Support Team
 WM Services
 ${EMAIL_USER}
 ${OPERATIONS_PHONE}`.trim();
-
 
   const payload = {
     message: {
@@ -145,11 +151,6 @@ ${OPERATIONS_PHONE}`.trim();
     } catch {}
     throw new Error(json?.error?.message || text || `sendMail failed: ${res.status}`);
   }
-
-  console.log("✅ COMPLETED EMAIL SENT:", {
-    to: [customerEmail, internalEmail],
-    ticketNumber,
-  });
 
   return { ok: true, status: res.status };
 }

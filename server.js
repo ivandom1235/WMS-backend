@@ -430,6 +430,8 @@ app.post("/api/tickets",requireUser, async (req, res) => {
           to: customerEmailId,
           customerName,
           ticketNumber,
+          category,
+          requestType
         });
       } catch (emailErr) {
         console.error("Email send FAILED:", emailErr?.message || emailErr);
@@ -452,6 +454,7 @@ app.post("/api/tickets",requireUser, async (req, res) => {
 
 // -------------------- Executive tickets list (only own tickets) --------------------
 
+// backend route file (where this route exists)
 app.get("/api/executive/tickets", requireUser, async (req, res) => {
   try {
     const username = String(req.user.username || "").trim();
@@ -463,10 +466,11 @@ app.get("/api/executive/tickets", requireUser, async (req, res) => {
         SELECT
           id,
           ticket_number,
+          company_name,
           customer_name,
           particulars,
           description,
-          due_date,
+          cost,
           created_at,
           status,
           due_duration_text
@@ -492,6 +496,8 @@ app.get("/api/executive/tickets", requireUser, async (req, res) => {
   }
 });
 
+
+// backend route file (where this route exists)
 app.get("/api/tickets", async (req, res) => {
   try {
     const { ticketNumber } = req.query;
@@ -502,10 +508,11 @@ app.get("/api/tickets", async (req, res) => {
         SELECT
           id,
           ticket_number,
+          company_name,
           customer_name,
           particulars,
           description,
-          due_date,
+          cost,
           created_at,
           status,
           due_duration_text
@@ -531,7 +538,6 @@ app.get("/api/tickets", async (req, res) => {
       .json({ message: "Server error.", details: err.message });
   }
 });
-
 
 
 // -------------------- Admin Auth Helpers --------------------
@@ -1516,6 +1522,8 @@ const TICKET_STATUSES = [
 // add near your other requires
 
 
+// (route file where this endpoint exists)
+
 app.patch("/api/tickets/:ticketNumber/status", async (req, res) => {
   try {
     const tn = String(req.params.ticketNumber || "").trim();
@@ -1552,6 +1560,8 @@ app.patch("/api/tickets/:ticketNumber/status", async (req, res) => {
         ticket_number,
         customer_name,
         customer_email_id,
+        category,
+        request_type,
         status
        FROM tickets
        WHERE ticket_number = ?
@@ -1597,6 +1607,8 @@ app.patch("/api/tickets/:ticketNumber/status", async (req, res) => {
           to: before.customer_email_id,
           customerName: before.customer_name,
           ticketNumber: before.ticket_number,
+          category: before.category,
+          requestType: before.request_type,
           opRemark: op_remark || "",
         });
       } catch (mailErr) {
@@ -1611,6 +1623,7 @@ app.patch("/api/tickets/:ticketNumber/status", async (req, res) => {
     return res.status(500).json({ message: "Failed to update status." });
   }
 });
+
 
 ////adding Download report for executives
 // GET: My tickets (view)
