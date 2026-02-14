@@ -13,6 +13,7 @@ import {
   sendTicketCompletedEmail,
   sendTicketRegisteredEmail,
 } from "./utils/mailer.js";
+import { updateTicketStatusAndRemark } from "./controllers/ticketController.js";
 
 
 const app = express();
@@ -431,7 +432,8 @@ app.post("/api/tickets",requireUser, async (req, res) => {
           customerName,
           ticketNumber,
           category,
-          requestType
+          requestType,
+          particulars
         });
       } catch (emailErr) {
         console.error("Email send FAILED:", emailErr?.message || emailErr);
@@ -463,20 +465,21 @@ app.get("/api/executive/tickets", requireUser, async (req, res) => {
     const conn = await pool.getConnection();
     try {
       let sql = `
-        SELECT
-          id,
-          ticket_number,
-          company_name,
-          customer_name,
-          particulars,
-          description,
-          cost,
-          created_at,
-          status,
-          due_duration_text
-        FROM tickets
-        WHERE username = ?
-      `;
+  SELECT
+    id,
+    ticket_number,
+    company_name,
+    customer_name,
+    particulars,
+    description,
+    cost,
+    created_at,
+    status,
+    remark
+  FROM tickets
+  WHERE username = ?
+`;
+
       const params = [username];
 
       if (ticketNumber && String(ticketNumber).trim() !== "") {
@@ -505,19 +508,20 @@ app.get("/api/tickets", async (req, res) => {
     const conn = await pool.getConnection();
     try {
       let sql = `
-        SELECT
-          id,
-          ticket_number,
-          company_name,
-          customer_name,
-          particulars,
-          description,
-          cost,
-          created_at,
-          status,
-          due_duration_text
-        FROM tickets
-      `;
+  SELECT
+    id,
+    ticket_number,
+    company_name,
+    customer_name,
+    particulars,
+    description,
+    cost,
+    created_at,
+    status,
+    remark
+  FROM tickets
+`;
+
       const params = [];
 
       if (ticketNumber && String(ticketNumber).trim() !== "") {
@@ -1127,30 +1131,31 @@ app.get("/api/tickets/:ticketNumber", async (req, res) => {
       return res.status(400).json({ message: "ticketNumber is required." });
 
     const [rows] = await pool.query(
-      `SELECT
-        id,
-        ticket_number,
-        company_name,
-        location,
-        customer_name,
-        customer_contact_number,
-        customer_email_id,
-        category,
-        request_type,
-        particulars,
-        description,
-        mode_of_payment,
-        service_charges,
-        cost,
-        due_date,
-        created_at,
-        status,
-        due_duration_text
-      FROM tickets
-      WHERE ticket_number = ?
-      LIMIT 1`,
-      [tn]
-    );
+  `SELECT
+    id,
+    ticket_number,
+    company_name,
+    location,
+    customer_name,
+    customer_contact_number,
+    customer_email_id,
+    category,
+    request_type,
+    particulars,
+    description,
+    mode_of_payment,
+    service_charges,
+    cost,
+    due_date,
+    created_at,
+    status,
+    due_duration_text,
+    remark
+  FROM tickets
+  WHERE ticket_number = ?
+  LIMIT 1`,
+  [tn]
+);
 
     if (!rows.length)
       return res.status(404).json({ message: "Ticket not found." });
@@ -1170,22 +1175,24 @@ app.put("/api/tickets/:ticketNumber", async (req, res) => {
     const body = req.body || {};
 
     const allowed = [
-      "company_name",
-      "location",
-      "customer_name",
-      "customer_contact_number",
-      "customer_email_id",
-      "category",
-      "request_type",
-      "particulars",
-      "description",
-      "mode_of_payment",
-      "service_charges",
-      "cost",
-      "due_date",
-      "status",
-      "due_duration_text",
-    ];
+  "company_name",
+  "location",
+  "customer_name",
+  "customer_contact_number",
+  "customer_email_id",
+  "category",
+  "request_type",
+  "particulars",
+  "description",
+  "mode_of_payment",
+  "service_charges",
+  "cost",
+  "due_date",
+  "status",
+  "due_duration_text",
+  "remark",
+];
+
 
     const setParts = [];
     const params = [];
@@ -1231,7 +1238,8 @@ app.put("/api/tickets/:ticketNumber", async (req, res) => {
         due_date,
         created_at,
         status,
-        due_duration_text
+        due_duration_text,
+        remark
       FROM tickets
       WHERE ticket_number = ?
       LIMIT 1`,
@@ -1512,6 +1520,7 @@ const TICKET_STATUSES = [
   "cancelled",
   "delayed",
   "reopened",
+  "resolved"
 ];
 
 // Allowed statuses (keep in one place)
@@ -1524,105 +1533,6 @@ const TICKET_STATUSES = [
 
 // (route file where this endpoint exists)
 
-app.patch("/api/tickets/:ticketNumber/status", async (req, res) => {
-  try {
-    const tn = String(req.params.ticketNumber || "").trim();
-    if (!tn)
-      return res.status(400).json({ message: "ticketNumber is required." });
-
-    const status = String(req.body?.status || "").trim();
-    const op_remark = String(req.body?.op_remark || "").trim();
-
-    if (!status)
-      return res.status(400).json({ message: "status is required." });
-    if (!TICKET_STATUSES.includes(status)) {
-      return res.status(400).json({ message: "Invalid status." });
-    }
-
-    if (
-      ["on_hold", "cancelled", "reopened"].includes(status) &&
-      op_remark.length < 3
-    ) {
-      return res
-        .status(400)
-        .json({ message: "OP remark is required for this status." });
-    }
-
-    if (op_remark.length > 2000) {
-      return res
-        .status(400)
-        .json({ message: "OP remark too long (max 2000 chars)." });
-    }
-
-    // ✅ 1) Load existing ticket first (for previous status + email fields)
-    const [beforeRows] = await pool.query(
-      `SELECT
-        ticket_number,
-        customer_name,
-        customer_email_id,
-        category,
-        request_type,
-        status
-       FROM tickets
-       WHERE ticket_number = ?
-       LIMIT 1`,
-      [tn]
-    );
-
-    if (!beforeRows.length) {
-      return res.status(404).json({ message: "Ticket not found." });
-    }
-
-    const before = beforeRows[0];
-    const prevStatus = String(before.status || "").trim();
-
-    // ✅ 2) Update
-    const [result] = await pool.query(
-      `UPDATE tickets
-       SET status = ?, OP_remarks = ?
-       WHERE ticket_number = ?`,
-      [status, op_remark || null, tn]
-    );
-
-    if (!result.affectedRows) {
-      return res.status(404).json({ message: "Ticket not found." });
-    }
-
-    // ✅ 3) Read updated ticket (your existing response)
-    const [rows] = await pool.query(
-      `SELECT
-        id, ticket_number, customer_name, status, OP_remarks, due_date, created_at
-       FROM tickets
-       WHERE ticket_number = ?
-       LIMIT 1`,
-      [tn]
-    );
-
-    const updated = rows[0];
-
-    // ✅ 4) Send email ONLY when transitioning to completed
-    if (status === "completed" && prevStatus !== "completed") {
-      try {
-        await sendTicketCompletedEmail({
-          to: before.customer_email_id,
-          customerName: before.customer_name,
-          ticketNumber: before.ticket_number,
-          category: before.category,
-          requestType: before.request_type,
-          opRemark: op_remark || "",
-        });
-      } catch (mailErr) {
-        console.error("❌ COMPLETED MAIL FAILED:", mailErr?.message || mailErr);
-        // do not fail status update if mail fails
-      }
-    }
-
-    return res.json({ ok: true, ticket: updated });
-  } catch (err) {
-    console.error("STATUS UPDATE ERROR:", err);
-    return res.status(500).json({ message: "Failed to update status." });
-  }
-});
 
 
 ////adding Download report for executives
@@ -1779,3 +1689,5 @@ app.get("/api/reports/my-tickets/export", requireUser, async (req, res) => {
   }
 });
 
+
+app.patch("/api/tickets/:ticketNumber/status", updateTicketStatusAndRemark);

@@ -8,6 +8,7 @@ async function sendTicketRegisteredEmail({
   ticketNumber,
   category,
   requestType,
+  particulars
 }) {
   const customerEmail = String(to || "").trim();
   const internalEmail = "info@wmservices.in";
@@ -29,6 +30,8 @@ Service Request Details:
 Service Request Number: ${ticketNumber}
 Category: ${category || "-"}
 Request Type: ${requestType || "-"}
+Particulars: ${particulars|| "-"}
+
 
 Current Status: Registered
 
@@ -84,6 +87,7 @@ async function sendTicketCompletedEmail({
   category,
   requestType,
   opRemark,
+  particulars,
 }) {
   const customerEmail = String(to || "").trim();
   const internalEmail = "info@wmservices.in";
@@ -107,6 +111,7 @@ Service Request Details:
 Service Request Number: ${ticketNumber}
 Category: ${category || "-"}
 Request Type: ${requestType || "-"}
+Particulars: ${particulars|| "-"}
 
 Current Status: Completed
 ${opRemark ? `\nOperations Remark: ${opRemark}\n` : ""}
