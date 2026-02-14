@@ -6,7 +6,8 @@ const ALLOWED = new Set([
   "in_progress",
   "delayed",
   "completed",
-  "resolved",
+  "cancelled",
+  
 ]);
 
 export async function updateTicketStatusAndRemark(req, res) {
