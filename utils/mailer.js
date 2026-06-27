@@ -8,13 +8,19 @@ async function sendTicketRegisteredEmail({
   ticketNumber,
   category,
   requestType,
-  particulars
+  particulars,
+  serviceCharges,
+  cost,
 }) {
   const customerEmail = String(to || "").trim();
   const internalEmail = "info@wmservices.in";
 
   const EMAIL_USER = String(process.env.OPERATIONS_EMAIL || "").trim();
   const OPERATIONS_PHONE = String(process.env.OPERATIONS_PHONE || "").trim();
+  const displayValue = (value) =>
+    value === null || value === undefined || String(value).trim() === ""
+      ? "-"
+      : String(value).trim();
 
   if (!customerEmail) throw new Error("Customer email is empty");
 
@@ -31,6 +37,8 @@ Service Request Number: ${ticketNumber}
 Category: ${category || "-"}
 Request Type: ${requestType || "-"}
 Particulars: ${particulars|| "-"}
+Service Charges: ${displayValue(serviceCharges)}
+Cost: ${displayValue(cost)}
 
 
 Current Status: Registered

@@ -433,7 +433,9 @@ app.post("/api/tickets",requireUser, async (req, res) => {
           ticketNumber,
           category,
           requestType,
-          particulars
+          particulars,
+          serviceCharges,
+          cost,
         });
       } catch (emailErr) {
         console.error("Email send FAILED:", emailErr?.message || emailErr);
